@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ResourceBundle;
 
 
 /**
@@ -15,7 +14,6 @@ import java.util.ResourceBundle;
  */
 public class BrowserModel {
     // constants
-    public static final String DEFAULT_RESOURCES = "resources/Errors";
     public static final String PROTOCOL_PREFIX = "http://";
     // state
     private URL myHome;
@@ -23,8 +21,6 @@ public class BrowserModel {
     private int myCurrentIndex;
     private List<URL> myHistory;
     private Map<String, URL> myFavorites;
-    // get strings from resource file
-    private ResourceBundle myResources;
 
 
     /**
@@ -36,55 +32,51 @@ public class BrowserModel {
         myCurrentIndex = -1;
         myHistory = new ArrayList<>();
         myFavorites = new HashMap<>();
-        // use resources for errors
-        myResources = ResourceBundle.getBundle(DEFAULT_RESOURCES);
     }
 
     /**
      * Returns the first page in next history, null if next history is empty.
      */
-    public URL next () {
+    public URL next () throws BrowserException {
         if (hasNext()) {
             myCurrentIndex++;
             return myHistory.get(myCurrentIndex);
         }
-        else {
-            throw new BrowserException(myResources.getString("NoNext"));
-        }
+        throw new BrowserException("no next page");
     }
 
     /**
      * Returns the first page in back history, null if back history is empty.
      */
-    public URL back () {
+    public URL back () throws BrowserException {
         if (hasPrevious()) {
             myCurrentIndex--;
             return myHistory.get(myCurrentIndex);
         }
-        else {
-            throw new BrowserException(myResources.getString("NoPrevious"));
-        }
+        throw new BrowserException("no previous page");
     }
 
     /**
      * Changes current page to given URL, removing next history.
      */
-    public URL go (String url) {
+    public URL go (String url) throws BrowserException {
         try {
             URL tmp = completeURL(url);
             // unfortunately, completeURL may not have returned a valid URL, so test it
             tmp.openStream();
             // if successful, remember this URL
             myCurrentURL = tmp;
-            if (hasNext()) {
-                myHistory = myHistory.subList(0, myCurrentIndex + 1);
+            if (myCurrentURL != null) {
+                if (hasNext()) {
+                    myHistory = myHistory.subList(0, myCurrentIndex + 1);
+                }
+                myHistory.add(myCurrentURL);
+                myCurrentIndex++;
             }
-            myHistory.add(myCurrentURL);
-            myCurrentIndex++;
             return myCurrentURL;
         }
         catch (Exception e) {
-            throw new BrowserException(e, myResources.getString("NoLoad"), url);
+        	throw new BrowserException("no URL");
         }
     }
 
@@ -104,6 +96,7 @@ public class BrowserModel {
 
     /**
      * Returns URL of the current home page or null if none is set.
+     * @throws BrowserException 
      */
     public URL getHome () {
         return myHome;
@@ -136,13 +129,11 @@ public class BrowserModel {
         if (name != null && !name.equals("") && myFavorites.containsKey(name)) {
             return myFavorites.get(name);
         }
-        else {
-            throw new BrowserException(myResources.getString("BadFavorite"), name);
-        }
+        return null;
     }
 
     // deal with a potentially incomplete URL
-    private URL completeURL (String possible) throws MalformedURLException {
+    private URL completeURL (String possible) {
         try {
             // try it as is
             return new URL(possible);
@@ -156,8 +147,7 @@ public class BrowserModel {
                     // e.g., let user leave off initial protocol
                     return new URL(PROTOCOL_PREFIX + possible);
                 } catch (MalformedURLException eee) {
-                    // nothing else to do, let caller report error to user
-                    throw eee;
+                    return null;
                 }
             }
         }

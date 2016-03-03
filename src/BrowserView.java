@@ -61,6 +61,8 @@ public class BrowserView {
     private Button myBackButton;
     private Button myNextButton;
     private Button myHomeButton;
+    private Button setFavoriteButton;
+    private Button myFavoriteGoButton;
     // favorites
     private ComboBox<String> myFavorites;
     // get strings from resource file
@@ -91,10 +93,11 @@ public class BrowserView {
      * Display given URL.
      */
     public void showPage (String url) {
-        try {
-            update(myModel.go(url));
-        }
-        catch (BrowserException e) {
+    	try{
+    		URL valid = myModel.go(url);
+    		update(valid);
+    	}
+    	catch(BrowserException e){
             showError(e.getMessage());
         }
     }
@@ -125,12 +128,22 @@ public class BrowserView {
 
     // move to the next URL in the history
     private void next () {
-        update(myModel.next());
+    	try{
+            update(myModel.next());
+    	}
+    	catch(BrowserException e){
+    		showError(e.getMessage());
+    	}
     }
 
     // move to the previous URL in the history
     private void back () {
-        update(myModel.back());
+    	try{
+    		update(myModel.back());
+    	}
+        catch(BrowserException e){
+        	showError(e.getMessage());
+        }
     }
 
     // change current URL to the home page, if set
@@ -141,8 +154,8 @@ public class BrowserView {
     // change page to favorite choice
     private void showFavorite (String favorite) {
         showPage(myModel.getFavorite(favorite).toString());
-        // reset favorites so the same choice can be made again
-        // myFavorites.setValue(null);
+        // reset favorites ComboBox so the same choice can be made again
+        //myFavorites.setValue(null);
     }
 
     // update just the view to display given URL
@@ -184,7 +197,7 @@ public class BrowserView {
     // organize user's options for controlling/giving input to model
     private Node makeInputPanel () {
         VBox result = new VBox();
-        result.getChildren().addAll(makeNavigationPanel(), makePreferencesPanel());
+        result.getChildren().addAll(makePreferencesPanel(), makeNavigationPanel());
         return result;
     }
 
@@ -224,14 +237,17 @@ public class BrowserView {
     private Node makePreferencesPanel () {
         HBox result = new HBox();
         myFavorites = new ComboBox<String>();
-        myFavorites.setPromptText(myResources.getString("FavoriteFirstItem"));
-        myFavorites.valueProperty().addListener((o, s1, s2) -> showFavorite(s2));
-        result.getChildren().add(makeButton("AddFavoriteCommand", event -> addFavorite()));
-        result.getChildren().add(myFavorites);
+        // ADD REST OF CODE HERE
         result.getChildren().add(makeButton("SetHomeCommand", event -> {
             myModel.setHome();
             enableButtons();
         }));
+        setFavoriteButton = makeButton("AddFavoriteCommand", event -> addFavorite());
+        result.getChildren().add(setFavoriteButton);
+        result.getChildren().add(myFavorites);
+        myFavoriteGoButton = makeButton("GoCommand", event -> showFavorite(myFavorites.getValue()));
+        result.getChildren().add(myFavoriteGoButton);
+        myFavorites.setValue("My Favorites");
         return result;
     }
 
@@ -264,17 +280,16 @@ public class BrowserView {
     // display page
     // very old style way create a callback (inner class)
     private class ShowPage implements EventHandler<ActionEvent> {
-        @Override
-        public void handle (ActionEvent event) {
-            showPage(myURLDisplay.getText());
-        }
+        @Override      
+        public void handle (ActionEvent event) {       
+            showPage(myURLDisplay.getText());      
+        }      
     }
 
 
     // Inner class to deal with link-clicks and mouse-overs Mostly taken from
     //   http://blogs.kiyut.com/tonny/2013/07/30/javafx-webview-addhyperlinklistener/
     private class LinkListener implements ChangeListener<State> {
-        public static final String HTML_LINK = "href";
         public static final String EVENT_CLICK = "click";
         public static final String EVENT_MOUSEOVER = "mouseover";
         public static final String EVENT_MOUSEOUT = "mouseout";
@@ -283,7 +298,7 @@ public class BrowserView {
         public void changed (ObservableValue<? extends State> ov, State oldState, State newState) {
             if (newState == Worker.State.SUCCEEDED) {
                 EventListener listener = event -> {
-                    final String href = ((Element)event.getTarget()).getAttribute(HTML_LINK);
+                    final String href = ((Element)event.getTarget()).getAttribute("href");
                     if (href != null) {
                         String domEventType = event.getType();
                         if (domEventType.equals(EVENT_CLICK)) {
